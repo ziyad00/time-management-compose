@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.sp
@@ -129,52 +130,9 @@ fun task(tasks: List<Task>) {
 @Composable
 fun AddTaskBottomSheet() {
 
-//    val modalBottomSheetState = rememberModalBottomSheetState(ModalBottomSheetValue.Hidden)
-    val coroutineScope = rememberCoroutineScope()
-    var title by remember { mutableStateOf(TextFieldValue("")) }
-    var description by remember { mutableStateOf(TextFieldValue("")) }
-//
-//    Box(modifier = Modifier) {
-//        Button(onClick = {
-//            coroutineScope.launch {
-//                modalBottomSheetState.show()
-//            }
-//        }) {
-//            Text(text = "Show")
-//        }
-//        ModalBottomSheetLayout(
-//            sheetState = modalBottomSheetState,
-//            //sheetBackgroundColor = Color.White,
-//            scrimColor = Color.White,
-//            sheetContent = {
-//                Column() {
-//                    Text(text = " ")
-//
-//                    TextField(
-//                        value = title, onValueChange = {title =it},
-//                        label = { Text(text = "Time") },
-//
-//                    )
-//                    TextField(value = description,
-//                        onValueChange = {description = it},
-//                        label = { Text(text = "Time") },
-//                    )
-//                    Button(onClick = {
-//                        Manager.tasks.add(Task(title = title.text, description = description.text))
-//                        coroutineScope.launch {
-//                          //  title = ""
-//                            /* TODO: change text to null */
-//                            modalBottomSheetState.hide()
-//                        }
-//                    }) {
-//                        Text(text = "Add Task")
-//                    }
-//                }
-//            }
-//        ) {
-//            // you can also opt to put screen composable / scaffold here
-//        }
-//    }
+    var title by rememberSaveable  { mutableStateOf("") }
+    var description by rememberSaveable  { mutableStateOf("") }
+
     val sheetState = rememberBottomSheetState(
         initialValue = BottomSheetValue.Collapsed
     )
@@ -187,8 +145,10 @@ fun AddTaskBottomSheet() {
         sheetContent = {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                .height(300.dp),
+
+            contentAlignment = Alignment.Center
             ) {
                 Column() {
                     Text(text = " ")
@@ -203,11 +163,11 @@ fun AddTaskBottomSheet() {
                         label = { Text(text = "Time") },
                     )
                     Button(onClick = {
-                        Manager.tasks.add(Task(title = title.text, description = description.text))
-                        coroutineScope.launch {
-                          //  title = ""
-                            /* TODO: change text to null */
-//                            scaffoldState.hide()
+                        Manager.tasks.add(Task(title = title, description = description))
+                        scope.launch {
+                            title = ""
+                            description = ""
+                            sheetState.collapse()
                         }
                     }) {
                         Text(text = "Add Task")
@@ -216,7 +176,6 @@ fun AddTaskBottomSheet() {
 
             }
         },
-        sheetBackgroundColor = Color.Green,
         sheetPeekHeight = 0.dp
     ) {
         Box(
@@ -233,7 +192,7 @@ fun AddTaskBottomSheet() {
                     }
                 }
             }) {
-                Text(text = "Bottom sheet fraction: ${sheetState.progress.fraction}")
+                Text(text = "Bottom sheet")
             }
         }
     }
