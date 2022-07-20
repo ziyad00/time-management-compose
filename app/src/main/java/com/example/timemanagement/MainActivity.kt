@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.*
@@ -25,11 +26,18 @@ import androidx.compose.ui.unit.sp
 
 class MainActivity : ComponentActivity() {
 
+    @OptIn(ExperimentalMaterialApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         setContent {
-
+            val sheetState = rememberBottomSheetState(
+                initialValue = BottomSheetValue.Collapsed
+            )
+            val scaffoldStateBottomSheet = rememberBottomSheetScaffoldState(
+                bottomSheetState = sheetState
+            )
+            val scope = rememberCoroutineScope()
             val scaffoldState = rememberScaffoldState()
             Scaffold(
                 modifier = Modifier.fillMaxSize(), scaffoldState = scaffoldState,
@@ -38,7 +46,15 @@ class MainActivity : ComponentActivity() {
                 },
                 floatingActionButton = {
                     FloatingActionButton(
-                        onClick = onClick,
+                        onClick = {
+                            scope.launch {
+                                if (sheetState.isCollapsed) {
+                                    sheetState.expand()
+                                } else {
+                                    sheetState.collapse()
+                                }
+                            }
+                        },
                         content = {
                             Icon(
                                 Icons.Filled.Add,
@@ -59,8 +75,8 @@ class MainActivity : ComponentActivity() {
                                 .padding(20.dp)
                         ) {
                             GreetingSection("Android")
-                            TasksSection()
-                            AddTaskBottomSheet()
+                            TasksSection(sheetState, scaffoldStateBottomSheet)
+                            AddTaskBottomSheet(sheetState, scaffoldStateBottomSheet)
 
                         }
                     }
@@ -69,6 +85,7 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
 }
 
 @Composable
@@ -83,37 +100,59 @@ fun GreetingSection(name: String) {
     }
 }
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun TasksSection() {
+fun TasksSection(     sheetState: BottomSheetState,
+                       scaffoldStateBottomSheet: BottomSheetScaffoldState) {
 
     Column(modifier = Modifier.padding(top = 50.dp, bottom = 50.dp)) {
         Box(modifier = Modifier.padding(bottom = 10.dp)) {
             Text(text = "Tasks", style = MaterialTheme.typography.h4)
 
         }
-        task(Manager.tasks)
+        task(Manager.tasks,sheetState,scaffoldStateBottomSheet)
 
 
     }
 }
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun task(tasks: List<Task>) {
+fun task(tasks: List<Task>,     sheetState: BottomSheetState,
+         scaffoldStateBottomSheet: BottomSheetScaffoldState
+) {
+    val scope = rememberCoroutineScope()
+
     LazyColumn {
         items(tasks) { task ->
 
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 10.dp)
+                    .background(Color.Gray)
+                    .padding(10.dp)
+                    .clickable {
+                        scope.launch {
+
+                            sheetState.expand()
+                        }
+                    }
             ) {
-                Text(text = task.title!!, style = MaterialTheme.typography.body1)
+                Text(
+                    text = task.title!!,
+                    style = MaterialTheme.typography.body1,
+                    color = Color.White
+                )
                 Column() {
                     Text(
                         text = task.description!!,
-                        style = MaterialTheme.typography.body1
+                        style = MaterialTheme.typography.body1,
+                        color = Color.White
                     )
                     Button(onClick = { Manager.tasks.remove(task) }) {
-                        Text(text = "Click me pls")
+                        Text(text = "Delete")
 
                     }
                 }
@@ -128,39 +167,37 @@ fun task(tasks: List<Task>) {
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun AddTaskBottomSheet() {
+fun AddTaskBottomSheet(
+    sheetState: BottomSheetState,
+    scaffoldStateBottomSheet: BottomSheetScaffoldState
+) {
 
-    var title by rememberSaveable  { mutableStateOf("") }
-    var description by rememberSaveable  { mutableStateOf("") }
+    var title by rememberSaveable { mutableStateOf("") }
+    var description by rememberSaveable { mutableStateOf("") }
 
-    val sheetState = rememberBottomSheetState(
-        initialValue = BottomSheetValue.Collapsed
-    )
-    val scaffoldState = rememberBottomSheetScaffoldState(
-        bottomSheetState = sheetState
-    )
+
     val scope = rememberCoroutineScope()
     BottomSheetScaffold(
-        scaffoldState = scaffoldState,
+        scaffoldState = scaffoldStateBottomSheet,
         sheetContent = {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                .height(300.dp),
+                    .height(200.dp),
 
-            contentAlignment = Alignment.Center
+                contentAlignment = Alignment.Center
             ) {
                 Column() {
-                    Text(text = " ")
 
                     TextField(
-                        value = title, onValueChange = {title =it},
-                        label = { Text(text = "Time") },
+                        value = title, onValueChange = { title = it },
+                        label = { Text(text = "Title") },
 
-                    )
-                    TextField(value = description,
-                        onValueChange = {description = it},
-                        label = { Text(text = "Time") },
+                        )
+                    TextField(
+                        value = description,
+                        onValueChange = { description = it },
+                        label = { Text(text = "Description") },
                     )
                     Button(onClick = {
                         Manager.tasks.add(Task(title = title, description = description))
@@ -178,31 +215,10 @@ fun AddTaskBottomSheet() {
         },
         sheetPeekHeight = 0.dp
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Button(onClick = {
-                scope.launch {
-                    if(sheetState.isCollapsed) {
-                        sheetState.expand()
-                    } else {
-                        sheetState.collapse()
-                    }
-                }
-            }) {
-                Text(text = "Bottom sheet")
-            }
-        }
+
     }
 }
 
-val onClick = {
-    Manager.tasks.add(Task(title = "task", description = "dd"))
-    Log.i("Task", Manager.tasks.toString())
-    Unit
-}
 
 @OptIn(ExperimentalMaterialApi::class)
 @Preview(showBackground = true, showSystemUi = true)
@@ -220,7 +236,7 @@ fun DefaultPreview() {
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = onClick,
+                onClick = { },
                 content = {
                     Icon(
                         Icons.Filled.Add,
@@ -238,7 +254,7 @@ fun DefaultPreview() {
                         .padding(20.dp)
                 ) {
                     GreetingSection("Android")
-                    TasksSection()
+                //    TasksSection()
 
 
                 }
