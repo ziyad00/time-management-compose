@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "184255286040",
+    "project_id": "time-managment-e43bf",
+    "storage_bucket": "time-managment-e43bf.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:184255286040:android:3958ac7807b7364bb6ac6d",
+        "android_client_info": {
+          "package_name": "com.example.timemanagement"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "184255286040-ssqqt7t5eje2c19948ehd4t0l3hfccrl.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBN1bPpITwLmPe_Oq-evvz2LTizNJ8CPbE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "184255286040-ssqqt7t5eje2c19948ehd4t0l3hfccrl.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:184255286040:android:c3ad46a6d440263fb6ac6d",
+        "android_client_info": {
+          "package_name": "com.ziyad.time_management"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "184255286040-ssqqt7t5eje2c19948ehd4t0l3hfccrl.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBN1bPpITwLmPe_Oq-evvz2LTizNJ8CPbE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "184255286040-ssqqt7t5eje2c19948ehd4t0l3hfccrl.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
