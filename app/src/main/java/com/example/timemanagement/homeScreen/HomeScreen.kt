@@ -5,11 +5,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.timemanagement.homeScreen.HomeScreenViewModel
 import com.example.timemanagement.models.Task
+import com.example.timemanagement.repository.Resources
 import com.example.timemanagement.theme.TimeManagementTheme
 import kotlinx.coroutines.launch
 
@@ -33,10 +35,14 @@ fun HomeScreen(viewModel: HomeScreenViewModel = viewModel()) {
     )
     val scope = rememberCoroutineScope()
     val scaffoldState = rememberScaffoldState()
+    val homeUiState = viewModel?.homeUiState
+    LaunchedEffect(key1 = Unit) {
+        viewModel?.loadTasks()
+    }
     Scaffold(
         modifier = Modifier.fillMaxSize(), scaffoldState = scaffoldState,
         topBar = {
-            TopAppBar(title = { Text("Title") })
+            TopAppBar(title = { Text("Taskly") })
         },
         floatingActionButton = {
             FloatingActionButton(
@@ -70,9 +76,10 @@ fun HomeScreen(viewModel: HomeScreenViewModel = viewModel()) {
                         .padding(20.dp)
                 ) {
                     GreetingSection("Android")
-                    TasksSection(
+                    TaskSection(
+                        homeUiState.tasks,
                         sheetState,
-                        viewModel.tasks,
+
                         viewModel::OnRemoveTask,
                         viewModel::OnChangeSelectedTask,
                         viewModel::OnChangeTitle,
@@ -81,12 +88,12 @@ fun HomeScreen(viewModel: HomeScreenViewModel = viewModel()) {
                     AddEditTaskBottomSheet(
                         sheetState,
                         scaffoldStateBottomSheet,
-                        title = viewModel.title,
-                        desc = viewModel.desc,
+                        title = homeUiState.title,
+                        desc = homeUiState.desc,
                         OnChangeTitle = viewModel::OnChangeTitle,
                         OnChangeDesc = viewModel::OnChangeDesc,
                         OnAddTask = viewModel::OnAddTask,
-                        selectedTask = viewModel.selectedTask,
+                        selectedTask = homeUiState.selectedTask,
                         OnUpdateTask = viewModel::OnUpdateTask,
                         OnChangeSelectedTask = viewModel::OnChangeSelectedTask,
 
@@ -112,92 +119,68 @@ fun GreetingSection(name: String) {
     }
 }
 
+
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun TasksSection(
+fun TaskSection(
+    tasks: Resources<List<Task>> ,
     sheetState: BottomSheetState,
-    tasks: List<Task>,
-    OnRemoveTask: (Task) -> Unit,
+    OnRemoveTask: (String) -> Unit,
     OnChangeSelectedTask: (Task) -> Unit,
     OnChangeTitle: (String) -> Unit,
     OnChangeDesc: (String) -> Unit,
 
 
     ) {
+    val scope = rememberCoroutineScope()
 
     Column(modifier = Modifier.padding(top = 50.dp, bottom = 50.dp)) {
         Box(modifier = Modifier.padding(bottom = 10.dp)) {
             Text(text = "Tasks", style = MaterialTheme.typography.h4)
 
         }
-        Task(
-            tasks,
-            sheetState,
+        LazyColumn {
+            itemsIndexed(tasks.data.orEmpty()) { index, task ->
 
-            OnRemoveTask,
-            OnChangeSelectedTask,
-            OnChangeTitle,
-            OnChangeDesc,
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 10.dp)
+                        .background(Color.Gray)
+                        .padding(10.dp)
+                        .clickable {
+                            scope.launch {
+                                OnChangeSelectedTask(task)
+                                OnChangeTitle(task.title!!)
+                                OnChangeDesc(task.description!!)
 
-            )
-
-
-    }
-}
-
-@OptIn(ExperimentalMaterialApi::class)
-@Composable
-fun Task(
-    tasks: List<Task>, sheetState: BottomSheetState,
-    OnRemoveTask: (Task) -> Unit,
-    OnChangeSelectedTask: (Task) -> Unit,
-    OnChangeTitle: (String) -> Unit,
-    OnChangeDesc: (String) -> Unit,
-
-    ) {
-    val scope = rememberCoroutineScope()
-
-    LazyColumn {
-        items(tasks) { task ->
-
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 10.dp)
-                    .background(Color.Gray)
-                    .padding(10.dp)
-                    .clickable {
-                        scope.launch {
-                            OnChangeSelectedTask(task)
-                            OnChangeTitle(task.title!!)
-                            OnChangeDesc(task.desc!!)
-
-                            sheetState.collapse()
-                            sheetState.expand()
+                                sheetState.collapse()
+                                sheetState.expand()
+                            }
                         }
-                    }
-            ) {
-                Text(
-                    text = task.title!!,
-                    style = MaterialTheme.typography.body1,
-                    color = Color.White
-                )
-                Column() {
+                ) {
                     Text(
-                        text = task.desc!!,
+                        text = task.title!!,
                         style = MaterialTheme.typography.body1,
                         color = Color.White
                     )
-                    Button(onClick = { OnRemoveTask(task) }) {
-                        Text(text = "Delete")
+                    Column() {
+                        Text(
+                            text = task.description!!,
+                            style = MaterialTheme.typography.body1,
+                            color = Color.White
+                        )
+                        Button(onClick = { OnRemoveTask(task.documentId!!) }) {
+                            Text(text = "Delete")
 
+                        }
                     }
+
                 }
 
+
             }
-
-
         }
     }
 
@@ -212,14 +195,14 @@ fun AddEditTaskBottomSheet(
     desc: String,
     OnChangeTitle: (String) -> Unit,
     OnChangeDesc: (String) -> Unit,
-    OnAddTask: (String, String) -> Unit,
-    OnUpdateTask: (Task, String, String) -> Unit,
+    OnAddTask: () -> Unit,
+    OnUpdateTask: (String) -> Unit,
     OnChangeSelectedTask: (Task) -> Unit,
     selectedTask: Task,
 ) {
     var isUpdate = false
-    var oldTask = Task("", "")
-    if (selectedTask.title == "") {
+    var oldTask = Task("", "", "")
+    if (selectedTask.userId == "") {
 
         isUpdate = false
     } else {
@@ -232,56 +215,78 @@ fun AddEditTaskBottomSheet(
     val scope = rememberCoroutineScope()
     BottomSheetScaffold(
         scaffoldState = scaffoldStateBottomSheet,
+        modifier = Modifier.fillMaxSize(),
         sheetContent = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp),
 
-                contentAlignment = Alignment.Center
-            ) {
-                Column() {
-
-
-                    TextField(
-                        value = title,
-                        onValueChange = OnChangeTitle,
-                        label = { Text(text = "Title") },
-                    )
-                    TextField(
-                        value = desc,
-                        onValueChange = OnChangeDesc,
-                        label = { Text(text = "Description") },
-                    )
-                    Button(onClick = {
-                        if (!isUpdate) {
-
-                            OnAddTask(title, desc)
-                        } else {
-                            OnChangeSelectedTask(Task(title, desc))
-                            Log.i("A", selectedTask.toString())
-                            OnUpdateTask(oldTask, title, desc)
-                        }
-
-
-                        scope.launch {
-                            OnChangeTitle("")
-                            OnChangeDesc("")
-                            sheetState.collapse()
-                        }
-                    }) {
-                        Text(text = if (!isUpdate) "Add Task" else "Update Task")
-                    }
-                }
-
-            }
         },
         sheetPeekHeight = 0.dp
-    ) {
 
+    ) {
+        
     }
 }
 
+@OptIn(ExperimentalMaterialApi::class)
+@Composable
+fun SheetContent(
+    sheetState: BottomSheetState,
+    title: String,
+                 OnChangeTitle: (String) -> Unit,
+                 desc: String,
+                 OnChangeDesc: (String) -> Unit,
+                 OnAddTask: () -> Unit,
+                 OnUpdateTask: (String) -> Unit,
+                 OnChangeSelectedTask: (Task) -> Unit,
+                 selectedTask: Task,
+
+                 ) {
+    val scope = rememberCoroutineScope()
+
+    var isUpdate = false
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(200.dp),
+
+        contentAlignment = Alignment.Center
+    ) {
+        Column(modifier = Modifier) {
+
+
+            TextField(
+                value = title,
+                onValueChange = OnChangeTitle,
+                label = { Text(text = "Title") },
+            )
+            TextField(
+                value = desc,
+                onValueChange = OnChangeDesc,
+                label = { Text(text = "Description") },
+            )
+            Button(onClick = {
+                if (!isUpdate) {
+
+                    OnAddTask()
+                } else {
+                    OnChangeSelectedTask(Task("", title, desc))
+                    Log.i("A", selectedTask.toString())
+                    OnUpdateTask(selectedTask.documentId!!)
+                }
+
+
+                scope.launch {
+                    OnChangeTitle("")
+                    OnChangeDesc("")
+                    sheetState.collapse()
+                }
+            }) {
+                Text(text = if (!isUpdate) "Add Task" else "Update Task")
+            }
+        }
+
+    }
+}
 
 @OptIn(ExperimentalMaterialApi::class)
 @Preview(showBackground = true, showSystemUi = true)
@@ -291,3 +296,4 @@ fun DefaultPreview2() {
     HomeScreen()
 
 }
+

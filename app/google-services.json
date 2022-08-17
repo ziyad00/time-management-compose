@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "184255286040-adcg5irmhp2pp3p769qh6e1qn1eeh8dl.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.timemanagement",
+            "certificate_hash": "c9317f7ce707a4e5f2eb599edd3d12cd77a71429"
+          }
+        },
+        {
           "client_id": "184255286040-ssqqt7t5eje2c19948ehd4t0l3hfccrl.apps.googleusercontent.com",
           "client_type": 3
         }
