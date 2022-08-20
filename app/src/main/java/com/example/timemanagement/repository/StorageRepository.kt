@@ -1,10 +1,13 @@
 package com.example.timemanagement.repository
+
 import android.util.Log
+import com.example.timemanagement.models.Count
 import com.example.timemanagement.models.Task
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -31,8 +34,8 @@ class StorageRepository {
 
         try {
             snapshotStateListener = tasksRef
-                 .orderBy("timestamp")
-                .whereEqualTo("userId", userId)
+                .whereEqualTo("userId", userId).
+                orderBy("timestamp", Query.Direction.ASCENDING)
                 .addSnapshotListener { snapshot, e ->
                     val response = if (snapshot != null) {
                         val tasks = snapshot?.toObjects(Task::class.java)
@@ -59,17 +62,17 @@ class StorageRepository {
     }
 
     fun getTask(
-        taskId:String,
-        onError:(Throwable?) -> Unit,
+        taskId: String,
+        onError: (Throwable?) -> Unit,
         onSuccess: (Task?) -> Unit
-    ){
+    ) {
         tasksRef
             .document(taskId)
             .get()
             .addOnSuccessListener {
                 onSuccess.invoke(it?.toObject(Task::class.java))
             }
-            .addOnFailureListener {result ->
+            .addOnFailureListener { result ->
                 onError.invoke(result.cause)
             }
 
@@ -80,15 +83,20 @@ class StorageRepository {
         userId: String,
         title: String,
         description: String,
+        status: Boolean,
         timestamp: Timestamp,
+        tags: List<String>,
+        count: Count,
         onComplete: (Boolean) -> Unit,
-    ){
+    ) {
         val documentId = tasksRef.document().id
         val task = Task(
             userId,
             title,
             description,
-            timestamp,
+            tags,
+            status=status,
+            timestamp=timestamp,
             documentId = documentId
         )
         tasksRef
@@ -101,7 +109,7 @@ class StorageRepository {
 
     }
 
-    fun deleteTask(taskId: String,onComplete: (Boolean) -> Unit){
+    fun deleteTask(taskId: String, onComplete: (Boolean) -> Unit) {
         tasksRef.document(taskId)
             .delete()
             .addOnCompleteListener {
@@ -111,13 +119,15 @@ class StorageRepository {
 
     fun updateTask(
         title: String,
-        desc:String,
+        desc: String,
+        tags: List<String>,
         taskId: String,
-        onResult:(Boolean) -> Unit
-    ){
-        val updateData = hashMapOf<String,Any>(
+        onResult: (Boolean) -> Unit
+    ) {
+        val updateData = hashMapOf<String, Any>(
             "description" to desc,
             "title" to title,
+            "tags" to tags
         )
 
         tasksRef.document(taskId)
@@ -126,6 +136,25 @@ class StorageRepository {
                 onResult(it.isSuccessful)
             }
 
+
+    }
+    fun updateTaskStatus(
+        status: Boolean,
+        taskId: String,
+        count: Count,
+        onResult: (Boolean) -> Unit
+    ) {
+        val updateData = hashMapOf<String, Any>(
+            "status" to status,
+            "count" to count,
+
+        )
+
+        tasksRef.document(taskId)
+            .update(updateData)
+            .addOnCompleteListener {
+                onResult(it.isSuccessful)
+            }
 
 
     }

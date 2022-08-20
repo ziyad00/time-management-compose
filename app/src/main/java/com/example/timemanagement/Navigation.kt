@@ -1,10 +1,12 @@
 package com.example.timemanagement
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.timemanagement.homeScreen.HomeScreenViewModel
 import com.example.timemanagement.loginScreen.LoginScreen
 import com.example.timemanagement.loginScreen.LoginViewModel
 import com.example.timemanagement.loginScreen.SignUpScreen
@@ -66,7 +68,7 @@ fun Navigation(
         }
 
         composable(route = HomeRoutes.Home.name) {
-            HomeScreen()
+            HomeScreen(viewModel(modelClass = HomeScreenViewModel::class.java))
         }
 
     }

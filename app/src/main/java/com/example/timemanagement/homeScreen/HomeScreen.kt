@@ -1,6 +1,8 @@
 package com.example.timemanagement
 
 import android.util.Log
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,26 +21,39 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.timemanagement.homeScreen.HomeScreenViewModel
+import com.example.timemanagement.homeScreen.HomeUIState
 import com.example.timemanagement.models.Task
 import com.example.timemanagement.repository.Resources
 import com.example.timemanagement.theme.TimeManagementTheme
+import com.google.firebase.Timestamp
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.unit.Dp
+
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun HomeScreen(viewModel: HomeScreenViewModel = viewModel()) {
+fun HomeScreen(viewModel: HomeScreenViewModel) {
+    val homeUiState = viewModel?.homeUiState
+
     val sheetState = rememberBottomSheetState(
         initialValue = BottomSheetValue.Collapsed
     )
+
     val scaffoldStateBottomSheet = rememberBottomSheetScaffoldState(
         bottomSheetState = sheetState
     )
     val scope = rememberCoroutineScope()
     val scaffoldState = rememberScaffoldState()
-    val homeUiState = viewModel?.homeUiState
     LaunchedEffect(key1 = Unit) {
         viewModel?.loadTasks()
     }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(), scaffoldState = scaffoldState,
         topBar = {
@@ -71,35 +86,40 @@ fun HomeScreen(viewModel: HomeScreenViewModel = viewModel()) {
                 modifier = Modifier.fillMaxSize(),
                 color = MaterialTheme.colors.background
             ) {
-                Column(
-                    modifier = Modifier
-                        .padding(20.dp)
+
+                if (homeUiState.selectedTask.userId == "") {
+                    viewModel.onChangeIsUpdated(false)
+                } else {
+                    viewModel.onChangeIsUpdated(true)
+
+
+                }
+
+
+                val scope = rememberCoroutineScope()
+                BottomSheetScaffold(
+                    scaffoldState = scaffoldStateBottomSheet,
+                    modifier = Modifier.fillMaxSize(),
+                    sheetContent = {
+                        SheetContent(
+                            sheetState,
+                            homeUiState = homeUiState,
+                            viewModel = viewModel
+                        )
+                    },
+                    sheetPeekHeight = 0.dp
+
                 ) {
                     GreetingSection("Android")
                     TaskSection(
-                        homeUiState.tasks,
+                        homeUiState,
                         sheetState,
 
-                        viewModel::OnRemoveTask,
-                        viewModel::OnChangeSelectedTask,
-                        viewModel::OnChangeTitle,
-                        viewModel::OnChangeDesc,
+                        viewModel
                     )
-                    AddEditTaskBottomSheet(
-                        sheetState,
-                        scaffoldStateBottomSheet,
-                        title = homeUiState.title,
-                        desc = homeUiState.desc,
-                        OnChangeTitle = viewModel::OnChangeTitle,
-                        OnChangeDesc = viewModel::OnChangeDesc,
-                        OnAddTask = viewModel::OnAddTask,
-                        selectedTask = homeUiState.selectedTask,
-                        OnUpdateTask = viewModel::OnUpdateTask,
-                        OnChangeSelectedTask = viewModel::OnChangeSelectedTask,
-
-                        )
-
                 }
+
+
             }
         }
     }
@@ -123,15 +143,12 @@ fun GreetingSection(name: String) {
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun TaskSection(
-    tasks: Resources<List<Task>> ,
+    homeUiState: HomeUIState,
     sheetState: BottomSheetState,
-    OnRemoveTask: (String) -> Unit,
-    OnChangeSelectedTask: (Task) -> Unit,
-    OnChangeTitle: (String) -> Unit,
-    OnChangeDesc: (String) -> Unit,
+    viewModel: HomeScreenViewModel
 
 
-    ) {
+) {
     val scope = rememberCoroutineScope()
 
     Column(modifier = Modifier.padding(top = 50.dp, bottom = 50.dp)) {
@@ -140,44 +157,102 @@ fun TaskSection(
 
         }
         LazyColumn {
-            itemsIndexed(tasks.data.orEmpty()) { index, task ->
+            items(items = homeUiState.tasks.data.orEmpty(),
+                { task: Task -> task.documentId!! }) { task ->
+                val dismissState = rememberDismissState(confirmStateChange = {
+                    if (it == DismissValue.DismissedToEnd || it == DismissValue.DismissedToStart) {
+                        viewModel.OnRemoveTask(task.documentId!!)
+                    }
+                    true
+                })
+                SwipeToDismiss(
+                    state = dismissState,
+                    background = {
+                        val color by animateColorAsState(
+                            when (dismissState.targetValue) {
+                                DismissValue.Default -> Color.White
+                                else -> Color.Red
+                            }
+                        )
+                        val alignment = Alignment.CenterEnd
+                        val icon = Icons.Default.Delete
 
-                Row(
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 10.dp)
-                        .background(Color.Gray)
-                        .padding(10.dp)
-                        .clickable {
-                            scope.launch {
-                                OnChangeSelectedTask(task)
-                                OnChangeTitle(task.title!!)
-                                OnChangeDesc(task.description!!)
+                        val scale by animateFloatAsState(
+                            if (dismissState.targetValue == DismissValue.Default) 0.75f else 1f
+                        )
 
-                                sheetState.collapse()
-                                sheetState.expand()
+                        Box(
+                            Modifier
+                                .fillMaxSize()
+                                .background(color)
+                                .padding(horizontal = Dp(20f)),
+                            contentAlignment = alignment
+                        ) {
+
+                        }
+                    },
+
+                    dismissThresholds = { direction ->
+                        FractionalThreshold(0.5f)
+                    },
+                ) {
+
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(10.dp)
+                            .background(Color.Gray)
+                            .padding(10.dp)
+                            .clickable {
+                                scope.launch {
+                                    viewModel.OnChangeSelectedTask(task)
+                                    viewModel.OnChangeTitle(task.title!!)
+                                    viewModel.OnChangeDesc(task.description!!)
+
+                                    sheetState.collapse()
+                                    sheetState.expand()
+                                }
+                            }
+                    ) {
+                        Column() {
+                            Text(
+                                text = task.title!!,
+                                style = MaterialTheme.typography.body1,
+                                color = Color.White
+                            )
+                            Text(
+                                text = task.description!!,
+                                style = MaterialTheme.typography.body1,
+                                color = Color.White
+                            )
+                            Text(
+                                text = viewModel.representTags(task.tags),
+                                style = MaterialTheme.typography.body1,
+                                color = Color.White
+                            )
+                        }
+
+
+                        Column() {
+                            Text(
+                                text = viewModel.getDateHourly(task.count.countTimeInSeconds),
+                                style = MaterialTheme.typography.body1,
+                                color = Color.White
+                            )
+
+                            Button(onClick = { viewModel.onChangeStatus(task) }) {
+                                if(!task.status)
+                                Icon(Icons.Filled.PlayArrow, "Play")
+                                else
+                                    Icon(Icons.Filled.Pause, "Pause")
                             }
                         }
-                ) {
-                    Text(
-                        text = task.title!!,
-                        style = MaterialTheme.typography.body1,
-                        color = Color.White
-                    )
-                    Column() {
-                        Text(
-                            text = task.description!!,
-                            style = MaterialTheme.typography.body1,
-                            color = Color.White
-                        )
-                        Button(onClick = { OnRemoveTask(task.documentId!!) }) {
-                            Text(text = "Delete")
 
-                        }
+
                     }
-
                 }
+
 
 
             }
@@ -186,68 +261,21 @@ fun TaskSection(
 
 }
 
-@OptIn(ExperimentalMaterialApi::class)
-@Composable
-fun AddEditTaskBottomSheet(
-    sheetState: BottomSheetState,
-    scaffoldStateBottomSheet: BottomSheetScaffoldState,
-    title: String,
-    desc: String,
-    OnChangeTitle: (String) -> Unit,
-    OnChangeDesc: (String) -> Unit,
-    OnAddTask: () -> Unit,
-    OnUpdateTask: (String) -> Unit,
-    OnChangeSelectedTask: (Task) -> Unit,
-    selectedTask: Task,
-) {
-    var isUpdate = false
-    var oldTask = Task("", "", "")
-    if (selectedTask.userId == "") {
-
-        isUpdate = false
-    } else {
-        isUpdate = true
-        oldTask = selectedTask.copy()
-
-    }
-
-
-    val scope = rememberCoroutineScope()
-    BottomSheetScaffold(
-        scaffoldState = scaffoldStateBottomSheet,
-        modifier = Modifier.fillMaxSize(),
-        sheetContent = {
-
-        },
-        sheetPeekHeight = 0.dp
-
-    ) {
-        
-    }
-}
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun SheetContent(
     sheetState: BottomSheetState,
-    title: String,
-                 OnChangeTitle: (String) -> Unit,
-                 desc: String,
-                 OnChangeDesc: (String) -> Unit,
-                 OnAddTask: () -> Unit,
-                 OnUpdateTask: (String) -> Unit,
-                 OnChangeSelectedTask: (Task) -> Unit,
-                 selectedTask: Task,
-
-                 ) {
+    homeUiState: HomeUIState,
+    viewModel: HomeScreenViewModel
+) {
     val scope = rememberCoroutineScope()
 
-    var isUpdate = false
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(200.dp),
+            .height(300.dp),
 
         contentAlignment = Alignment.Center
     ) {
@@ -255,33 +283,42 @@ fun SheetContent(
 
 
             TextField(
-                value = title,
-                onValueChange = OnChangeTitle,
+                value = homeUiState.title,
+                onValueChange = viewModel::OnChangeTitle,
                 label = { Text(text = "Title") },
             )
             TextField(
-                value = desc,
-                onValueChange = OnChangeDesc,
+                value = homeUiState.desc,
+                onValueChange = viewModel::OnChangeDesc,
                 label = { Text(text = "Description") },
             )
-            Button(onClick = {
-                if (!isUpdate) {
+            TextField(
+                value = homeUiState.tag,
+                onValueChange = viewModel::OnChangeTag,
+                label = { Text(text = "Add a tag") },
 
-                    OnAddTask()
+                )
+
+
+         //   Text(text = viewModel.representTags(viewModel.seperateTags()))
+            Button(onClick = {
+                if (!homeUiState.isUpdated) {
+
+                    viewModel.OnAddTask()
                 } else {
-                    OnChangeSelectedTask(Task("", title, desc))
-                    Log.i("A", selectedTask.toString())
-                    OnUpdateTask(selectedTask.documentId!!)
+                    viewModel.OnChangeSelectedTask(Task("", homeUiState.title, homeUiState.desc))
+                    viewModel.OnUpdateTask(homeUiState.selectedTask.documentId!!)
                 }
 
 
                 scope.launch {
-                    OnChangeTitle("")
-                    OnChangeDesc("")
+                    viewModel.OnChangeTitle("")
+                    viewModel.OnChangeDesc("")
+                    viewModel.OnChangeTag("")
                     sheetState.collapse()
                 }
             }) {
-                Text(text = if (!isUpdate) "Add Task" else "Update Task")
+                Text(text = if (!homeUiState.isUpdated) "Add Task" else "Update Task")
             }
         }
 
@@ -293,7 +330,7 @@ fun SheetContent(
 @Composable
 fun DefaultPreview2() {
 
-    HomeScreen()
+    HomeScreen(viewModel(modelClass = HomeScreenViewModel::class.java))
 
 }
 
