@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 import java.util.*
 import kotlin.math.log
 
-class HomeScreenViewModel(
+class HomeViewModel(
     private val repository: StorageRepository = StorageRepository(),
 
     ) : ViewModel() {

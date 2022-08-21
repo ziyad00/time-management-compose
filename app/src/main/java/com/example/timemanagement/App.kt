@@ -7,6 +7,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.timemanagement.homeScreen.HomeViewModel
 import com.example.timemanagement.loginScreen.LoginScreen
 import com.example.timemanagement.loginScreen.LoginViewModel
 import com.example.timemanagement.theme.TimeManagementTheme
@@ -14,10 +15,11 @@ import com.example.timemanagement.theme.TimeManagementTheme
 @Composable
 fun App() {
     val loginViewModel = viewModel(modelClass = LoginViewModel::class.java)
+    val homeViewModel = viewModel(modelClass = HomeViewModel::class.java)
 
     TimeManagementTheme{
         Surface(color = MaterialTheme.colors.background) {
-            Navigation(loginViewModel = loginViewModel)
+            Navigation(loginViewModel = loginViewModel, homeViewModel = homeViewModel )
 
         }
     }
